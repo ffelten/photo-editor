@@ -6,8 +6,15 @@ const downloadBtn = document.getElementById('downloadBtn');
 const resetBtn = document.getElementById('resetBtn');
 const feedbackBtn = document.getElementById('feedbackBtn');
 const feedbackMenu = document.getElementById('feedbackMenu');
+const rotateLeftBtn = document.getElementById('rotateLeft');
+const rotateRightBtn = document.getElementById('rotateRight');
+const flipHBtn = document.getElementById('flipH');
+const flipVBtn = document.getElementById('flipV');
 
 let originalImage = null;
+let rotation = 0; // 0, 90, 180, 270
+let flipHorizontal = false;
+let flipVertical = false;
 
 const filters = {
   brightness: 100,
@@ -45,6 +52,29 @@ function setupEventListeners() {
 
   document.addEventListener('click', () => {
     feedbackMenu.classList.remove('visible');
+  });
+
+  // Transform buttons
+  rotateLeftBtn.addEventListener('click', () => {
+    rotation = (rotation - 90 + 360) % 360;
+    updateCanvasSize();
+    applyFilters();
+  });
+
+  rotateRightBtn.addEventListener('click', () => {
+    rotation = (rotation + 90) % 360;
+    updateCanvasSize();
+    applyFilters();
+  });
+
+  flipHBtn.addEventListener('click', () => {
+    flipHorizontal = !flipHorizontal;
+    applyFilters();
+  });
+
+  flipVBtn.addEventListener('click', () => {
+    flipVertical = !flipVertical;
+    applyFilters();
   });
 
   // Focus canvas container for keyboard events
@@ -145,15 +175,11 @@ function loadImage(file) {
     const img = new Image();
     img.onload = () => {
       originalImage = img;
+      rotation = 0;
+      flipHorizontal = false;
+      flipVertical = false;
       
-      // Set canvas size maintaining aspect ratio
-      const maxWidth = canvas.parentElement.clientWidth - 64;
-      const maxHeight = canvas.parentElement.clientHeight - 64;
-      const ratio = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
-      
-      canvas.width = img.width * ratio;
-      canvas.height = img.height * ratio;
-      
+      updateCanvasSize();
       uploadPrompt.classList.add('hidden');
       canvas.classList.add('visible');
       
@@ -162,6 +188,23 @@ function loadImage(file) {
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function updateCanvasSize() {
+  if (!originalImage) return;
+  
+  const maxWidth = canvas.parentElement.clientWidth - 64;
+  const maxHeight = canvas.parentElement.clientHeight - 64;
+  
+  // Swap dimensions if rotated 90 or 270 degrees
+  const isRotated = rotation === 90 || rotation === 270;
+  const imgWidth = isRotated ? originalImage.height : originalImage.width;
+  const imgHeight = isRotated ? originalImage.width : originalImage.height;
+  
+  const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight, 1);
+  
+  canvas.width = imgWidth * ratio;
+  canvas.height = imgHeight * ratio;
 }
 
 function applyFilters() {
@@ -180,7 +223,20 @@ function applyFilters() {
   
   ctx.filter = filterString;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
+  
+  // Apply transforms
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((rotation * Math.PI) / 180);
+  ctx.scale(flipHorizontal ? -1 : 1, flipVertical ? -1 : 1);
+  
+  // Calculate draw dimensions based on rotation
+  const isRotated = rotation === 90 || rotation === 270;
+  const drawWidth = isRotated ? canvas.height : canvas.width;
+  const drawHeight = isRotated ? canvas.width : canvas.height;
+  
+  ctx.drawImage(originalImage, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+  ctx.restore();
 }
 
 function applyPreset(presetName) {
@@ -218,6 +274,12 @@ function resetFilters() {
     }
   });
   
+  // Reset transforms
+  rotation = 0;
+  flipHorizontal = false;
+  flipVertical = false;
+  updateCanvasSize();
+  
   applyFilters();
 }
 
@@ -228,8 +290,10 @@ function downloadImage() {
   const tempCanvas = document.createElement('canvas');
   const tempCtx = tempCanvas.getContext('2d');
   
-  tempCanvas.width = originalImage.width;
-  tempCanvas.height = originalImage.height;
+  // Set canvas size based on rotation
+  const isRotated = rotation === 90 || rotation === 270;
+  tempCanvas.width = isRotated ? originalImage.height : originalImage.width;
+  tempCanvas.height = isRotated ? originalImage.width : originalImage.height;
   
   const filterString = `
     brightness(${filters.brightness}%)
@@ -242,7 +306,16 @@ function downloadImage() {
   `.trim();
   
   tempCtx.filter = filterString;
-  tempCtx.drawImage(originalImage, 0, 0);
+  
+  // Apply transforms
+  tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
+  tempCtx.rotate((rotation * Math.PI) / 180);
+  tempCtx.scale(flipHorizontal ? -1 : 1, flipVertical ? -1 : 1);
+  
+  const drawWidth = isRotated ? tempCanvas.height : tempCanvas.width;
+  const drawHeight = isRotated ? tempCanvas.width : tempCanvas.height;
+  
+  tempCtx.drawImage(originalImage, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
   
   const link = document.createElement('a');
   link.download = 'edited-photo.png';

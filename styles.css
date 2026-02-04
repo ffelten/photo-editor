@@ -248,6 +248,27 @@ main {
   vertical-align: middle;
 }
 
+.transform-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.transform-btn {
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.transform-btn:hover {
+  background: var(--accent);
+}
+
 .preset-buttons {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
