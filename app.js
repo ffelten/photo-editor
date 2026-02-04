@@ -56,15 +56,29 @@ function setupEventListeners() {
 
   // Paste from clipboard
   document.addEventListener('paste', (e) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
     
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
+    // Try files first (works in most browsers)
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      const file = clipboardData.files[0];
+      if (file.type.startsWith('image/')) {
         e.preventDefault();
-        const file = item.getAsFile();
-        if (file) loadImage(file);
-        break;
+        loadImage(file);
+        return;
+      }
+    }
+    
+    // Fallback to items (for some browsers)
+    const items = clipboardData.items;
+    if (items) {
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) loadImage(file);
+          return;
+        }
       }
     }
   });
