@@ -4,6 +4,9 @@ const fileInput = document.getElementById('fileInput');
 const uploadPrompt = document.getElementById('uploadPrompt');
 const downloadBtn = document.getElementById('downloadBtn');
 const resetBtn = document.getElementById('resetBtn');
+const feedbackBtn = document.getElementById('feedbackBtn');
+const feedbackMenu = document.getElementById('feedbackMenu');
+
 let originalImage = null;
 
 const filters = {
@@ -33,6 +36,16 @@ function setupEventListeners() {
   fileInput.addEventListener('change', handleFileSelect);
   downloadBtn.addEventListener('click', downloadImage);
   resetBtn.addEventListener('click', resetFilters);
+
+  // Feedback menu toggle
+  feedbackBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    feedbackMenu.classList.toggle('visible');
+  });
+
+  document.addEventListener('click', () => {
+    feedbackMenu.classList.remove('visible');
+  });
 
   // Focus canvas container for keyboard events
   const canvasContainer = document.getElementById('canvasContainer');
