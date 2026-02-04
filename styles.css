@@ -66,7 +66,8 @@ header h1 {
   top: 100%;
   right: 0;
   margin-top: 0.5rem;
-  background: var(--bg-tertiary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
   border-radius: var(--border-radius);
   overflow: hidden;
   opacity: 0;
@@ -74,8 +75,8 @@ header h1 {
   transform: translateY(-10px);
   transition: all 0.2s ease;
   z-index: 100;
-  min-width: 180px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  min-width: 200px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
 }
 
 .feedback-menu.visible {
@@ -85,16 +86,40 @@ header h1 {
 }
 
 .feedback-menu a {
-  display: block;
-  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
   color: var(--text-primary);
   text-decoration: none;
   font-size: 0.875rem;
-  transition: background 0.2s ease;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.feedback-menu a:last-child {
+  border-bottom: none;
 }
 
 .feedback-menu a:hover {
-  background: var(--accent);
+  background: var(--bg-tertiary);
+  padding-left: 1.25rem;
+}
+
+.feedback-menu a::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.feedback-menu a:first-child::before {
+  background: #4ade80;
+}
+
+.feedback-menu a:last-child::before {
+  background: #f87171;
 }
 
 main {
