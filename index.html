@@ -10,48 +10,7 @@
   <div class="app">
     <header>
       <h1>Photo Editor</h1>
-      <button id="feedbackBtn" class="feedback-btn">Feedback</button>
     </header>
-    
-    <!-- Feedback Modal -->
-    <div class="modal-overlay" id="feedbackModal">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>Send Feedback</h2>
-          <button class="modal-close" id="modalClose">&times;</button>
-        </div>
-        <form id="feedbackForm">
-          <div class="form-group">
-            <label>Type</label>
-            <div class="radio-group">
-              <label class="radio-label">
-                <input type="radio" name="type" value="feature" checked>
-                <span class="radio-custom"></span>
-                Feature Request
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="type" value="bug">
-                <span class="radio-custom"></span>
-                Bug Report
-              </label>
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="issueTitle">Title</label>
-            <input type="text" id="issueTitle" required placeholder="Brief summary">
-          </div>
-          <div class="form-group">
-            <label for="issueDescription">Description</label>
-            <textarea id="issueDescription" rows="5" required placeholder="Provide details..."></textarea>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
-            <button type="submit" class="btn-submit">Submit</button>
-          </div>
-        </form>
-        <div class="form-status" id="formStatus"></div>
-      </div>
-    </div>
     
     <main>
       <div class="canvas-container">

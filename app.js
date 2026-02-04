@@ -4,16 +4,6 @@ const fileInput = document.getElementById('fileInput');
 const uploadPrompt = document.getElementById('uploadPrompt');
 const downloadBtn = document.getElementById('downloadBtn');
 const resetBtn = document.getElementById('resetBtn');
-const feedbackBtn = document.getElementById('feedbackBtn');
-const feedbackModal = document.getElementById('feedbackModal');
-const feedbackForm = document.getElementById('feedbackForm');
-const modalClose = document.getElementById('modalClose');
-const cancelBtn = document.getElementById('cancelBtn');
-const formStatus = document.getElementById('formStatus');
-
-// Configure your Google Apps Script web app URL
-const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_SCRIPT_URL';
-
 let originalImage = null;
 
 const filters = {
@@ -43,15 +33,6 @@ function setupEventListeners() {
   fileInput.addEventListener('change', handleFileSelect);
   downloadBtn.addEventListener('click', downloadImage);
   resetBtn.addEventListener('click', resetFilters);
-
-  // Feedback modal
-  feedbackBtn.addEventListener('click', openModal);
-  modalClose.addEventListener('click', closeModal);
-  cancelBtn.addEventListener('click', closeModal);
-  feedbackModal.addEventListener('click', (e) => {
-    if (e.target === feedbackModal) closeModal();
-  });
-  feedbackForm.addEventListener('submit', handleFeedbackSubmit);
 
   // Drag and drop
   const canvasContainer = document.querySelector('.canvas-container');
@@ -236,58 +217,6 @@ function downloadImage() {
   link.download = 'edited-photo.png';
   link.href = tempCanvas.toDataURL('image/png');
   link.click();
-}
-
-function openModal() {
-  feedbackModal.classList.add('visible');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeModal() {
-  feedbackModal.classList.remove('visible');
-  document.body.style.overflow = '';
-  feedbackForm.reset();
-  formStatus.classList.remove('visible', 'success', 'error');
-}
-
-async function handleFeedbackSubmit(e) {
-  e.preventDefault();
-  
-  const submitBtn = feedbackForm.querySelector('.btn-submit');
-  const type = feedbackForm.querySelector('input[name="type"]:checked').value;
-  const title = document.getElementById('issueTitle').value.trim();
-  const description = document.getElementById('issueDescription').value.trim();
-  
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Submitting...';
-  
-  try {
-    const response = await fetch(GOOGLE_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        type: type === 'feature' ? 'Feature Request' : 'Bug Report',
-        title: title,
-        description: description
-      })
-    });
-    
-    // With no-cors mode, we can't read the response, but the request goes through
-    formStatus.textContent = 'Thank you! Your feedback has been submitted.';
-    formStatus.classList.add('visible', 'success');
-    feedbackForm.reset();
-    
-    setTimeout(closeModal, 2000);
-  } catch (error) {
-    formStatus.textContent = 'Failed to submit. Please try again later.';
-    formStatus.classList.add('visible', 'error');
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Submit';
-  }
 }
 
 init();
