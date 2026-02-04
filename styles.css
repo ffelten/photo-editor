@@ -44,6 +44,7 @@ header h1 {
 
 .header-actions {
   position: relative;
+  display: inline-block;
 }
 
 .feedback-btn {
@@ -62,6 +63,7 @@ header h1 {
 }
 
 .feedback-menu {
+  display: none;
   position: absolute;
   top: 100%;
   right: 0;
@@ -70,19 +72,13 @@ header h1 {
   border: 1px solid var(--bg-tertiary);
   border-radius: var(--border-radius);
   overflow: hidden;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-10px);
-  transition: all 0.2s ease;
   z-index: 100;
   min-width: 200px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
 }
 
 .feedback-menu.visible {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
+  display: block;
 }
 
 .feedback-menu a {
@@ -90,11 +86,15 @@ header h1 {
   align-items: center;
   gap: 0.75rem;
   padding: 0.875rem 1rem;
-  color: var(--text-primary);
-  text-decoration: none;
+  color: var(--text-primary) !important;
+  text-decoration: none !important;
   font-size: 0.875rem;
   transition: all 0.15s ease;
   border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.feedback-menu a:visited {
+  color: var(--text-primary) !important;
 }
 
 .feedback-menu a:last-child {
@@ -103,7 +103,6 @@ header h1 {
 
 .feedback-menu a:hover {
   background: var(--bg-tertiary);
-  padding-left: 1.25rem;
 }
 
 .feedback-menu a::before {
