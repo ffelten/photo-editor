@@ -106,26 +106,29 @@ function setupEventListeners() {
     const clipboardData = e.clipboardData;
     if (!clipboardData) return;
     
-    // Try files first (works in most browsers)
+    // Check items first (required for macOS Chrome with screenshots/copied images)
+    const items = clipboardData.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            loadImage(file);
+            return;
+          }
+        }
+      }
+    }
+    
+    // Fallback to files array (for drag-drop or some browsers)
     if (clipboardData.files && clipboardData.files.length > 0) {
       const file = clipboardData.files[0];
       if (file.type.startsWith('image/')) {
         e.preventDefault();
         loadImage(file);
         return;
-      }
-    }
-    
-    // Fallback to items (for some browsers)
-    const items = clipboardData.items;
-    if (items) {
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const file = item.getAsFile();
-          if (file) loadImage(file);
-          return;
-        }
       }
     }
   });
