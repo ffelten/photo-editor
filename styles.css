@@ -53,6 +53,7 @@ main {
   padding: 2rem;
   position: relative;
   background: var(--bg-secondary);
+  outline: none;
 }
 
 #canvas {

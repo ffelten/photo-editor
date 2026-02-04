@@ -34,8 +34,12 @@ function setupEventListeners() {
   downloadBtn.addEventListener('click', downloadImage);
   resetBtn.addEventListener('click', resetFilters);
 
+  // Focus canvas container for keyboard events
+  const canvasContainer = document.getElementById('canvasContainer');
+  canvasContainer.focus();
+  canvasContainer.addEventListener('click', () => canvasContainer.focus());
+
   // Drag and drop
-  const canvasContainer = document.querySelector('.canvas-container');
   canvasContainer.addEventListener('dragover', (e) => {
     e.preventDefault();
     uploadPrompt.style.borderColor = 'var(--accent)';
