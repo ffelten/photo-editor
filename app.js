@@ -10,11 +10,25 @@ const rotateLeftBtn = document.getElementById('rotateLeft');
 const rotateRightBtn = document.getElementById('rotateRight');
 const flipHBtn = document.getElementById('flipH');
 const flipVBtn = document.getElementById('flipV');
+const textInput = document.getElementById('textInput');
+const textSizeSlider = document.getElementById('textSize');
+const textColorInput = document.getElementById('textColor');
+const textStrokeInput = document.getElementById('textStroke');
 
 let originalImage = null;
 let rotation = 0; // 0, 90, 180, 270
 let flipHorizontal = false;
 let flipVertical = false;
+
+// Text overlay state
+const textOverlay = {
+  content: '',
+  size: 32,
+  color: '#ffffff',
+  strokeColor: '#000000',
+  x: 0.5, // Position as percentage of canvas width
+  y: 0.5  // Position as percentage of canvas height
+};
 
 const filters = {
   brightness: 100,
@@ -137,6 +151,38 @@ function setupEventListeners() {
   document.querySelectorAll('.preset-btn').forEach(btn => {
     btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
   });
+
+  // Text overlay controls
+  textInput.addEventListener('input', (e) => {
+    textOverlay.content = e.target.value;
+    applyFilters();
+  });
+
+  textSizeSlider.addEventListener('input', (e) => {
+    textOverlay.size = parseInt(e.target.value);
+    textSizeSlider.nextElementSibling.textContent = `${textOverlay.size}px`;
+    applyFilters();
+  });
+
+  textColorInput.addEventListener('input', (e) => {
+    textOverlay.color = e.target.value;
+    applyFilters();
+  });
+
+  textStrokeInput.addEventListener('input', (e) => {
+    textOverlay.strokeColor = e.target.value;
+    applyFilters();
+  });
+
+  // Click on canvas to position text
+  canvas.addEventListener('click', (e) => {
+    if (!originalImage || !textOverlay.content) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    textOverlay.x = (e.clientX - rect.left) / canvas.width;
+    textOverlay.y = (e.clientY - rect.top) / canvas.height;
+    applyFilters();
+  });
 }
 
 function setupSliders() {
@@ -240,6 +286,35 @@ function applyFilters() {
   
   ctx.drawImage(originalImage, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
   ctx.restore();
+  
+  // Draw text overlay (without filters)
+  drawTextOverlay(ctx, canvas.width, canvas.height);
+}
+
+function drawTextOverlay(context, width, height) {
+  if (!textOverlay.content) return;
+  
+  context.filter = 'none';
+  context.save();
+  
+  const x = textOverlay.x * width;
+  const y = textOverlay.y * height;
+  
+  context.font = `bold ${textOverlay.size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  
+  // Draw stroke
+  context.strokeStyle = textOverlay.strokeColor;
+  context.lineWidth = Math.max(2, textOverlay.size / 16);
+  context.lineJoin = 'round';
+  context.strokeText(textOverlay.content, x, y);
+  
+  // Draw fill
+  context.fillStyle = textOverlay.color;
+  context.fillText(textOverlay.content, x, y);
+  
+  context.restore();
 }
 
 function applyPreset(presetName) {
@@ -283,6 +358,19 @@ function resetFilters() {
   flipVertical = false;
   updateCanvasSize();
   
+  // Reset text overlay
+  textOverlay.content = '';
+  textOverlay.size = 32;
+  textOverlay.color = '#ffffff';
+  textOverlay.strokeColor = '#000000';
+  textOverlay.x = 0.5;
+  textOverlay.y = 0.5;
+  textInput.value = '';
+  textSizeSlider.value = 32;
+  textSizeSlider.nextElementSibling.textContent = '32px';
+  textColorInput.value = '#ffffff';
+  textStrokeInput.value = '#000000';
+  
   applyFilters();
 }
 
@@ -311,6 +399,7 @@ function downloadImage() {
   tempCtx.filter = filterString;
   
   // Apply transforms
+  tempCtx.save();
   tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
   tempCtx.rotate((rotation * Math.PI) / 180);
   tempCtx.scale(flipHorizontal ? -1 : 1, flipVertical ? -1 : 1);
@@ -319,6 +408,33 @@ function downloadImage() {
   const drawHeight = isRotated ? tempCanvas.width : tempCanvas.height;
   
   tempCtx.drawImage(originalImage, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+  tempCtx.restore();
+  
+  // Draw text overlay at full resolution
+  if (textOverlay.content) {
+    const scale = tempCanvas.width / canvas.width;
+    const scaledSize = textOverlay.size * scale;
+    
+    tempCtx.filter = 'none';
+    tempCtx.save();
+    
+    const x = textOverlay.x * tempCanvas.width;
+    const y = textOverlay.y * tempCanvas.height;
+    
+    tempCtx.font = `bold ${scaledSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+    tempCtx.textAlign = 'center';
+    tempCtx.textBaseline = 'middle';
+    
+    tempCtx.strokeStyle = textOverlay.strokeColor;
+    tempCtx.lineWidth = Math.max(2, scaledSize / 16);
+    tempCtx.lineJoin = 'round';
+    tempCtx.strokeText(textOverlay.content, x, y);
+    
+    tempCtx.fillStyle = textOverlay.color;
+    tempCtx.fillText(textOverlay.content, x, y);
+    
+    tempCtx.restore();
+  }
   
   const link = document.createElement('a');
   link.download = 'edited-photo.png';
