@@ -14,21 +14,18 @@ const textInput = document.getElementById('textInput');
 const textSizeSlider = document.getElementById('textSize');
 const textColorInput = document.getElementById('textColor');
 const textStrokeInput = document.getElementById('textStroke');
+const textLayersContainer = document.getElementById('textLayers');
+const addTextBtn = document.getElementById('addTextBtn');
+const textEditor = document.getElementById('textEditor');
 
 let originalImage = null;
 let rotation = 0; // 0, 90, 180, 270
 let flipHorizontal = false;
 let flipVertical = false;
 
-// Text overlay state
-const textOverlay = {
-  content: '',
-  size: 32,
-  color: '#ffffff',
-  strokeColor: '#000000',
-  x: 0.5, // Position as percentage of canvas width
-  y: 0.5  // Position as percentage of canvas height
-};
+// Multiple text overlays
+let textOverlays = [];
+let selectedTextIndex = -1;
 
 const filters = {
   brightness: 100,
@@ -153,35 +150,120 @@ function setupEventListeners() {
   });
 
   // Text overlay controls
+  addTextBtn.addEventListener('click', addNewText);
+
   textInput.addEventListener('input', (e) => {
-    textOverlay.content = e.target.value;
+    if (selectedTextIndex < 0) return;
+    textOverlays[selectedTextIndex].content = e.target.value;
+    renderTextLayers();
     applyFilters();
   });
 
   textSizeSlider.addEventListener('input', (e) => {
-    textOverlay.size = parseInt(e.target.value);
-    textSizeSlider.nextElementSibling.textContent = `${textOverlay.size}px`;
+    if (selectedTextIndex < 0) return;
+    textOverlays[selectedTextIndex].size = parseInt(e.target.value);
+    textSizeSlider.nextElementSibling.textContent = `${e.target.value}px`;
     applyFilters();
   });
 
   textColorInput.addEventListener('input', (e) => {
-    textOverlay.color = e.target.value;
+    if (selectedTextIndex < 0) return;
+    textOverlays[selectedTextIndex].color = e.target.value;
     applyFilters();
   });
 
   textStrokeInput.addEventListener('input', (e) => {
-    textOverlay.strokeColor = e.target.value;
+    if (selectedTextIndex < 0) return;
+    textOverlays[selectedTextIndex].strokeColor = e.target.value;
     applyFilters();
   });
 
   // Click on canvas to position text
   canvas.addEventListener('click', (e) => {
-    if (!originalImage || !textOverlay.content) return;
+    if (!originalImage || selectedTextIndex < 0) return;
     
     const rect = canvas.getBoundingClientRect();
-    textOverlay.x = (e.clientX - rect.left) / canvas.width;
-    textOverlay.y = (e.clientY - rect.top) / canvas.height;
+    textOverlays[selectedTextIndex].x = (e.clientX - rect.left) / canvas.width;
+    textOverlays[selectedTextIndex].y = (e.clientY - rect.top) / canvas.height;
     applyFilters();
+  });
+}
+
+function addNewText() {
+  const newText = {
+    content: '',
+    size: 32,
+    color: '#ffffff',
+    strokeColor: '#000000',
+    x: 0.5,
+    y: 0.5
+  };
+  textOverlays.push(newText);
+  selectText(textOverlays.length - 1);
+  renderTextLayers();
+  textInput.focus();
+}
+
+function selectText(index) {
+  selectedTextIndex = index;
+  
+  if (index >= 0 && index < textOverlays.length) {
+    const text = textOverlays[index];
+    textInput.value = text.content;
+    textSizeSlider.value = text.size;
+    textSizeSlider.nextElementSibling.textContent = `${text.size}px`;
+    textColorInput.value = text.color;
+    textStrokeInput.value = text.strokeColor;
+    textEditor.style.display = 'block';
+  } else {
+    textEditor.style.display = 'none';
+  }
+  
+  renderTextLayers();
+  applyFilters();
+}
+
+function deleteText(index) {
+  textOverlays.splice(index, 1);
+  
+  if (selectedTextIndex === index) {
+    selectedTextIndex = textOverlays.length > 0 ? Math.min(index, textOverlays.length - 1) : -1;
+    if (selectedTextIndex >= 0) {
+      selectText(selectedTextIndex);
+    } else {
+      textEditor.style.display = 'none';
+    }
+  } else if (selectedTextIndex > index) {
+    selectedTextIndex--;
+  }
+  
+  renderTextLayers();
+  applyFilters();
+}
+
+function renderTextLayers() {
+  textLayersContainer.innerHTML = '';
+  
+  textOverlays.forEach((text, index) => {
+    const layer = document.createElement('div');
+    layer.className = `text-layer${index === selectedTextIndex ? ' selected' : ''}`;
+    layer.innerHTML = `
+      <span class="text-layer-content">${text.content || '(empty)'}</span>
+      <button class="text-layer-delete" title="Delete">×</button>
+    `;
+    
+    layer.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('text-layer-delete')) {
+        selectText(index);
+      }
+    });
+    
+    layer.querySelector('.text-layer-delete').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteText(index);
+    });
+    
+    textLayersContainer.appendChild(layer);
   });
 }
 
@@ -291,30 +373,52 @@ function applyFilters() {
   drawTextOverlay(ctx, canvas.width, canvas.height);
 }
 
-function drawTextOverlay(context, width, height) {
-  if (!textOverlay.content) return;
+function drawTextOverlay(context, width, height, scale = 1) {
+  if (textOverlays.length === 0) return;
   
   context.filter = 'none';
-  context.save();
   
-  const x = textOverlay.x * width;
-  const y = textOverlay.y * height;
-  
-  context.font = `bold ${textOverlay.size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
-  context.textAlign = 'center';
-  context.textBaseline = 'middle';
-  
-  // Draw stroke
-  context.strokeStyle = textOverlay.strokeColor;
-  context.lineWidth = Math.max(2, textOverlay.size / 16);
-  context.lineJoin = 'round';
-  context.strokeText(textOverlay.content, x, y);
-  
-  // Draw fill
-  context.fillStyle = textOverlay.color;
-  context.fillText(textOverlay.content, x, y);
-  
-  context.restore();
+  textOverlays.forEach((textOverlay, index) => {
+    if (!textOverlay.content) return;
+    
+    context.save();
+    
+    const x = textOverlay.x * width;
+    const y = textOverlay.y * height;
+    const size = textOverlay.size * scale;
+    
+    context.font = `bold ${size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    
+    // Draw stroke
+    context.strokeStyle = textOverlay.strokeColor;
+    context.lineWidth = Math.max(2, size / 16);
+    context.lineJoin = 'round';
+    context.strokeText(textOverlay.content, x, y);
+    
+    // Draw fill
+    context.fillStyle = textOverlay.color;
+    context.fillText(textOverlay.content, x, y);
+    
+    // Draw selection indicator for selected text (preview only)
+    if (index === selectedTextIndex && scale === 1) {
+      context.strokeStyle = 'rgba(233, 69, 96, 0.8)';
+      context.lineWidth = 2;
+      context.setLineDash([5, 5]);
+      const metrics = context.measureText(textOverlay.content);
+      const padding = 8;
+      context.strokeRect(
+        x - metrics.width / 2 - padding,
+        y - size / 2 - padding,
+        metrics.width + padding * 2,
+        size + padding * 2
+      );
+      context.setLineDash([]);
+    }
+    
+    context.restore();
+  });
 }
 
 function applyPreset(presetName) {
@@ -358,18 +462,16 @@ function resetFilters() {
   flipVertical = false;
   updateCanvasSize();
   
-  // Reset text overlay
-  textOverlay.content = '';
-  textOverlay.size = 32;
-  textOverlay.color = '#ffffff';
-  textOverlay.strokeColor = '#000000';
-  textOverlay.x = 0.5;
-  textOverlay.y = 0.5;
+  // Reset text overlays
+  textOverlays = [];
+  selectedTextIndex = -1;
   textInput.value = '';
   textSizeSlider.value = 32;
   textSizeSlider.nextElementSibling.textContent = '32px';
   textColorInput.value = '#ffffff';
   textStrokeInput.value = '#000000';
+  textEditor.style.display = 'none';
+  renderTextLayers();
   
   applyFilters();
 }
@@ -410,31 +512,9 @@ function downloadImage() {
   tempCtx.drawImage(originalImage, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
   tempCtx.restore();
   
-  // Draw text overlay at full resolution
-  if (textOverlay.content) {
-    const scale = tempCanvas.width / canvas.width;
-    const scaledSize = textOverlay.size * scale;
-    
-    tempCtx.filter = 'none';
-    tempCtx.save();
-    
-    const x = textOverlay.x * tempCanvas.width;
-    const y = textOverlay.y * tempCanvas.height;
-    
-    tempCtx.font = `bold ${scaledSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
-    tempCtx.textAlign = 'center';
-    tempCtx.textBaseline = 'middle';
-    
-    tempCtx.strokeStyle = textOverlay.strokeColor;
-    tempCtx.lineWidth = Math.max(2, scaledSize / 16);
-    tempCtx.lineJoin = 'round';
-    tempCtx.strokeText(textOverlay.content, x, y);
-    
-    tempCtx.fillStyle = textOverlay.color;
-    tempCtx.fillText(textOverlay.content, x, y);
-    
-    tempCtx.restore();
-  }
+  // Draw all text overlays at full resolution
+  const scale = tempCanvas.width / canvas.width;
+  drawTextOverlay(tempCtx, tempCanvas.width, tempCanvas.height, scale);
   
   const link = document.createElement('a');
   link.download = 'edited-photo.png';
