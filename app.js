@@ -17,6 +17,10 @@ const textStrokeInput = document.getElementById('textStroke');
 const textLayersContainer = document.getElementById('textLayers');
 const addTextBtn = document.getElementById('addTextBtn');
 const textEditor = document.getElementById('textEditor');
+const redEyeToggle = document.getElementById('redEyeToggle');
+const redEyeSizeSlider = document.getElementById('redEyeSize');
+const redEyeHint = document.getElementById('redEyeHint');
+const canvasContainer = document.getElementById('canvasContainer');
 
 let originalImage = null;
 let rotation = 0; // 0, 90, 180, 270
@@ -26,6 +30,10 @@ let flipVertical = false;
 // Multiple text overlays
 let textOverlays = [];
 let selectedTextIndex = -1;
+
+// Red eye tool state
+let redEyeToolActive = false;
+let redEyeBrushSize = 20;
 
 const filters = {
   brightness: 100,
@@ -89,7 +97,6 @@ function setupEventListeners() {
   });
 
   // Focus canvas container for keyboard events
-  const canvasContainer = document.getElementById('canvasContainer');
   canvasContainer.focus();
   canvasContainer.addEventListener('click', () => canvasContainer.focus());
 
@@ -178,14 +185,45 @@ function setupEventListeners() {
     applyFilters();
   });
 
-  // Click on canvas to position text
+  // Click on canvas to position text or apply red-eye removal
   canvas.addEventListener('click', (e) => {
-    if (!originalImage || selectedTextIndex < 0) return;
+    if (!originalImage) return;
     
     const rect = canvas.getBoundingClientRect();
-    textOverlays[selectedTextIndex].x = (e.clientX - rect.left) / canvas.width;
-    textOverlays[selectedTextIndex].y = (e.clientY - rect.top) / canvas.height;
-    applyFilters();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Red eye tool takes priority
+    if (redEyeToolActive) {
+      applyRedEyeRemoval(x, y);
+      return;
+    }
+    
+    // Text positioning
+    if (selectedTextIndex >= 0) {
+      textOverlays[selectedTextIndex].x = x / canvas.width;
+      textOverlays[selectedTextIndex].y = y / canvas.height;
+      applyFilters();
+    }
+  });
+
+  // Red eye tool controls
+  redEyeToggle.addEventListener('click', () => {
+    redEyeToolActive = !redEyeToolActive;
+    redEyeToggle.classList.toggle('active', redEyeToolActive);
+    redEyeToggle.textContent = redEyeToolActive ? 'Disable Red Eye Tool' : 'Enable Red Eye Tool';
+    redEyeHint.style.display = redEyeToolActive ? 'block' : 'none';
+    canvasContainer.classList.toggle('red-eye-mode', redEyeToolActive);
+    
+    // Deselect text when enabling red eye tool
+    if (redEyeToolActive && selectedTextIndex >= 0) {
+      selectText(-1);
+    }
+  });
+
+  redEyeSizeSlider.addEventListener('input', (e) => {
+    redEyeBrushSize = parseInt(e.target.value);
+    redEyeSizeSlider.nextElementSibling.textContent = `${redEyeBrushSize}px`;
   });
 }
 
@@ -473,7 +511,69 @@ function resetFilters() {
   textEditor.style.display = 'none';
   renderTextLayers();
   
+  // Reset red eye tool
+  redEyeToolActive = false;
+  redEyeBrushSize = 20;
+  redEyeToggle.classList.remove('active');
+  redEyeToggle.textContent = 'Enable Red Eye Tool';
+  redEyeHint.style.display = 'none';
+  redEyeSizeSlider.value = 20;
+  redEyeSizeSlider.nextElementSibling.textContent = '20px';
+  canvasContainer.classList.remove('red-eye-mode');
+  
   applyFilters();
+}
+
+function applyRedEyeRemoval(clickX, clickY) {
+  // Get the image data from canvas
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  const radius = redEyeBrushSize / 2;
+  const radiusSquared = radius * radius;
+  
+  // Process pixels within the brush radius
+  for (let y = Math.max(0, Math.floor(clickY - radius)); y < Math.min(canvas.height, Math.ceil(clickY + radius)); y++) {
+    for (let x = Math.max(0, Math.floor(clickX - radius)); x < Math.min(canvas.width, Math.ceil(clickX + radius)); x++) {
+      // Check if pixel is within circular brush
+      const dx = x - clickX;
+      const dy = y - clickY;
+      const distSquared = dx * dx + dy * dy;
+      
+      if (distSquared <= radiusSquared) {
+        const i = (y * canvas.width + x) * 4;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        
+        // Detect red pixels: high red, low green and blue
+        // Red eye typically has R > 100, R > G * 1.5, R > B * 1.5
+        if (r > 80 && r > g * 1.4 && r > b * 1.4) {
+          // Calculate intensity based on distance from center (smoother edges)
+          const distRatio = Math.sqrt(distSquared) / radius;
+          const intensity = 1 - (distRatio * distRatio); // Quadratic falloff
+          
+          // Calculate the replacement color (desaturated and darkened)
+          const avg = (g + b) / 2;
+          const newR = r - (r - avg) * intensity;
+          const newG = g;
+          const newB = b;
+          
+          // Darken slightly to simulate pupil
+          const darkenFactor = 0.7 + (0.3 * distRatio);
+          data[i] = Math.round(newR * darkenFactor);
+          data[i + 1] = Math.round(newG * darkenFactor);
+          data[i + 2] = Math.round(newB * darkenFactor);
+        }
+      }
+    }
+  }
+  
+  // Put the modified image data back
+  ctx.putImageData(imageData, 0, 0);
+  
+  // Redraw text overlays on top
+  drawTextOverlay(ctx, canvas.width, canvas.height);
 }
 
 function downloadImage() {

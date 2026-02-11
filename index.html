@@ -123,6 +123,17 @@
           </div>
         </section>
         
+        <section class="control-group">
+          <h3>Red Eye Removal</h3>
+          <button class="tool-toggle-btn" id="redEyeToggle">Enable Red Eye Tool</button>
+          <div class="slider-control">
+            <label for="redEyeSize">Brush Size</label>
+            <input type="range" id="redEyeSize" min="5" max="50" value="20">
+            <span class="value">20px</span>
+          </div>
+          <p class="text-hint" id="redEyeHint" style="display: none;">Click on red eyes to remove</p>
+        </section>
+        
         <section class="control-group actions">
           <button id="resetBtn" class="action-btn secondary">Reset</button>
           <button id="downloadBtn" class="action-btn primary">Download</button>

@@ -469,6 +469,34 @@ main {
   padding-top: 0.75rem;
 }
 
+/* Tool Toggle Button */
+.tool-toggle-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  border: 2px solid transparent;
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 0.75rem;
+}
+
+.tool-toggle-btn:hover {
+  background: #1a4a80;
+}
+
+.tool-toggle-btn.active {
+  background: var(--accent);
+  border-color: var(--accent-hover);
+}
+
+/* Red Eye Tool Cursor */
+.canvas-container.red-eye-mode #canvas {
+  cursor: crosshair;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   main {
