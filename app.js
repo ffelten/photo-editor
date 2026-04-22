@@ -32,8 +32,13 @@ const circleCrop = {
   enabled: false,
   size: 90,
   borderWidth: 0,
-  borderColor: '#ffffff'
+  borderColor: '#ffffff',
+  x: 0.5,
+  y: 0.5
 };
+
+let circleDragMode = null; // 'move' | 'resize' | null
+let circleDragged = false;
 
 // Multiple text overlays
 let textOverlays = [];
@@ -214,10 +219,59 @@ function setupEventListeners() {
     applyFilters();
   });
 
+  // Circle crop: drag to move, drag edge to resize
+  canvas.addEventListener('mousedown', (e) => {
+    if (!originalImage || !circleCrop.enabled) return;
+    const point = getCanvasPoint(e);
+    const mode = hitTestCircle(point);
+    if (!mode) return;
+    circleDragMode = mode;
+    circleDragged = false;
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!circleDragMode) {
+      if (originalImage && circleCrop.enabled) {
+        const point = getCanvasPoint(e);
+        const mode = hitTestCircle(point);
+        canvas.style.cursor = mode === 'resize' ? 'nwse-resize' : mode === 'move' ? 'move' : '';
+      }
+      return;
+    }
+    circleDragged = true;
+    const point = getCanvasPoint(e);
+    if (circleDragMode === 'move') {
+      circleCrop.x = Math.max(0, Math.min(1, point.x / canvas.width));
+      circleCrop.y = Math.max(0, Math.min(1, point.y / canvas.height));
+    } else if (circleDragMode === 'resize') {
+      const cx = canvas.width * circleCrop.x;
+      const cy = canvas.height * circleCrop.y;
+      const dist = Math.hypot(point.x - cx, point.y - cy);
+      const borderWidth = circleCrop.borderWidth;
+      const baseRadius = Math.min(canvas.width, canvas.height) / 2 - borderWidth / 2;
+      if (baseRadius > 0) {
+        const pct = Math.max(10, Math.min(100, (dist / baseRadius) * 100));
+        circleCrop.size = Math.round(pct);
+        circleSize.value = circleCrop.size;
+        circleSize.nextElementSibling.textContent = `${circleCrop.size}%`;
+      }
+    }
+    applyFilters();
+  });
+
+  window.addEventListener('mouseup', () => {
+    circleDragMode = null;
+  });
+
   // Click on canvas to position text
   canvas.addEventListener('click', (e) => {
+    if (circleDragged) {
+      circleDragged = false;
+      return;
+    }
     if (!originalImage || selectedTextIndex < 0) return;
-    
+
     const rect = canvas.getBoundingClientRect();
     textOverlays[selectedTextIndex].x = (e.clientX - rect.left) / canvas.width;
     textOverlays[selectedTextIndex].y = (e.clientY - rect.top) / canvas.height;
@@ -408,19 +462,70 @@ function applyFilters() {
   // Apply circle crop (with border) after image, before text
   applyCircleCrop(ctx, canvas.width, canvas.height, 1);
 
+  // Preview-only dashed outline so user can always see/drag the selection
+  drawCirclePreviewOutline(ctx, canvas.width, canvas.height);
+
   // Draw text overlay (without filters)
   drawTextOverlay(ctx, canvas.width, canvas.height);
+}
+
+function drawCirclePreviewOutline(context, width, height) {
+  if (!circleCrop.enabled) return;
+
+  const { cx, cy, radius } = getCircleGeometry(width, height, 1);
+  context.save();
+  context.filter = 'none';
+  context.strokeStyle = 'rgba(233, 69, 96, 0.9)';
+  context.lineWidth = 1.5;
+  context.setLineDash([6, 4]);
+  context.beginPath();
+  context.arc(cx, cy, radius, 0, Math.PI * 2);
+  context.stroke();
+  context.setLineDash([]);
+
+  // Resize handle at right edge
+  context.fillStyle = 'rgba(233, 69, 96, 0.9)';
+  context.beginPath();
+  context.arc(cx + radius, cy, 6, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+}
+
+function getCanvasPoint(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY
+  };
+}
+
+function hitTestCircle(point) {
+  const { cx, cy, radius } = getCircleGeometry(canvas.width, canvas.height, 1);
+  const dx = point.x - cx;
+  const dy = point.y - cy;
+  const dist = Math.hypot(dx, dy);
+  const edgeTolerance = 12;
+  if (Math.abs(dist - radius) <= edgeTolerance) return 'resize';
+  if (dist < radius) return 'move';
+  return null;
+}
+
+function getCircleGeometry(width, height, scale) {
+  const cx = width * circleCrop.x;
+  const cy = height * circleCrop.y;
+  const borderWidth = circleCrop.borderWidth * scale;
+  const baseRadius = Math.min(width, height) / 2 - borderWidth / 2;
+  const radius = Math.max(1, baseRadius * (circleCrop.size / 100));
+  return { cx, cy, radius, borderWidth };
 }
 
 function applyCircleCrop(context, width, height, scale) {
   if (!circleCrop.enabled) return;
 
   context.filter = 'none';
-  const cx = width / 2;
-  const cy = height / 2;
-  const borderWidth = circleCrop.borderWidth * scale;
-  const maxRadius = Math.min(width, height) / 2 - borderWidth / 2;
-  const radius = Math.max(1, maxRadius * (circleCrop.size / 100));
+  const { cx, cy, radius, borderWidth } = getCircleGeometry(width, height, scale);
 
   // Clip image to circle: keep only pixels inside the circle
   context.save();
@@ -538,6 +643,8 @@ function resetFilters() {
   circleCrop.size = 90;
   circleCrop.borderWidth = 0;
   circleCrop.borderColor = '#ffffff';
+  circleCrop.x = 0.5;
+  circleCrop.y = 0.5;
   circleEnabled.checked = false;
   circleOptions.style.display = 'none';
   circleSize.value = 90;
