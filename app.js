@@ -17,11 +17,23 @@ const textStrokeInput = document.getElementById('textStroke');
 const textLayersContainer = document.getElementById('textLayers');
 const addTextBtn = document.getElementById('addTextBtn');
 const textEditor = document.getElementById('textEditor');
+const circleEnabled = document.getElementById('circleEnabled');
+const circleOptions = document.getElementById('circleOptions');
+const circleSize = document.getElementById('circleSize');
+const circleBorderWidth = document.getElementById('circleBorderWidth');
+const circleBorderColor = document.getElementById('circleBorderColor');
 
 let originalImage = null;
 let rotation = 0; // 0, 90, 180, 270
 let flipHorizontal = false;
 let flipVertical = false;
+
+const circleCrop = {
+  enabled: false,
+  size: 90,
+  borderWidth: 0,
+  borderColor: '#ffffff'
+};
 
 // Multiple text overlays
 let textOverlays = [];
@@ -175,6 +187,30 @@ function setupEventListeners() {
   textStrokeInput.addEventListener('input', (e) => {
     if (selectedTextIndex < 0) return;
     textOverlays[selectedTextIndex].strokeColor = e.target.value;
+    applyFilters();
+  });
+
+  // Circle crop controls
+  circleEnabled.addEventListener('change', (e) => {
+    circleCrop.enabled = e.target.checked;
+    circleOptions.style.display = circleCrop.enabled ? 'block' : 'none';
+    applyFilters();
+  });
+
+  circleSize.addEventListener('input', (e) => {
+    circleCrop.size = parseInt(e.target.value);
+    circleSize.nextElementSibling.textContent = `${e.target.value}%`;
+    applyFilters();
+  });
+
+  circleBorderWidth.addEventListener('input', (e) => {
+    circleCrop.borderWidth = parseInt(e.target.value);
+    circleBorderWidth.nextElementSibling.textContent = `${e.target.value}px`;
+    applyFilters();
+  });
+
+  circleBorderColor.addEventListener('input', (e) => {
+    circleCrop.borderColor = e.target.value;
     applyFilters();
   });
 
@@ -368,9 +404,44 @@ function applyFilters() {
   
   ctx.drawImage(originalImage, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
   ctx.restore();
-  
+
+  // Apply circle crop (with border) after image, before text
+  applyCircleCrop(ctx, canvas.width, canvas.height, 1);
+
   // Draw text overlay (without filters)
   drawTextOverlay(ctx, canvas.width, canvas.height);
+}
+
+function applyCircleCrop(context, width, height, scale) {
+  if (!circleCrop.enabled) return;
+
+  context.filter = 'none';
+  const cx = width / 2;
+  const cy = height / 2;
+  const borderWidth = circleCrop.borderWidth * scale;
+  const maxRadius = Math.min(width, height) / 2 - borderWidth / 2;
+  const radius = Math.max(1, maxRadius * (circleCrop.size / 100));
+
+  // Clip image to circle: keep only pixels inside the circle
+  context.save();
+  context.globalCompositeOperation = 'destination-in';
+  context.beginPath();
+  context.arc(cx, cy, radius, 0, Math.PI * 2);
+  context.closePath();
+  context.fill();
+  context.restore();
+
+  // Draw border around the circle
+  if (borderWidth > 0) {
+    context.save();
+    context.strokeStyle = circleCrop.borderColor;
+    context.lineWidth = borderWidth;
+    context.beginPath();
+    context.arc(cx, cy, radius, 0, Math.PI * 2);
+    context.closePath();
+    context.stroke();
+    context.restore();
+  }
 }
 
 function drawTextOverlay(context, width, height, scale = 1) {
@@ -462,6 +533,19 @@ function resetFilters() {
   flipVertical = false;
   updateCanvasSize();
   
+  // Reset circle crop
+  circleCrop.enabled = false;
+  circleCrop.size = 90;
+  circleCrop.borderWidth = 0;
+  circleCrop.borderColor = '#ffffff';
+  circleEnabled.checked = false;
+  circleOptions.style.display = 'none';
+  circleSize.value = 90;
+  circleSize.nextElementSibling.textContent = '90%';
+  circleBorderWidth.value = 0;
+  circleBorderWidth.nextElementSibling.textContent = '0px';
+  circleBorderColor.value = '#ffffff';
+
   // Reset text overlays
   textOverlays = [];
   selectedTextIndex = -1;
@@ -511,9 +595,14 @@ function downloadImage() {
   
   tempCtx.drawImage(originalImage, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
   tempCtx.restore();
-  
-  // Draw all text overlays at full resolution
+
+  // Scale factor relative to preview canvas
   const scale = tempCanvas.width / canvas.width;
+
+  // Apply circle crop at full resolution
+  applyCircleCrop(tempCtx, tempCanvas.width, tempCanvas.height, scale);
+
+  // Draw all text overlays at full resolution
   drawTextOverlay(tempCtx, tempCanvas.width, tempCanvas.height, scale);
   
   const link = document.createElement('a');

@@ -97,6 +97,34 @@
         </section>
         
         <section class="control-group">
+          <h3>Circle Crop</h3>
+          <div class="toggle-control">
+            <label for="circleEnabled">
+              <input type="checkbox" id="circleEnabled">
+              <span>Enable circle crop</span>
+            </label>
+          </div>
+          <div class="circle-options" id="circleOptions" style="display: none;">
+            <div class="slider-control">
+              <label for="circleSize">Size</label>
+              <input type="range" id="circleSize" min="10" max="100" value="90">
+              <span class="value">90%</span>
+            </div>
+            <div class="slider-control">
+              <label for="circleBorderWidth">Border</label>
+              <input type="range" id="circleBorderWidth" min="0" max="50" value="0">
+              <span class="value">0px</span>
+            </div>
+            <div class="text-options">
+              <div class="color-control">
+                <label for="circleBorderColor">Color</label>
+                <input type="color" id="circleBorderColor" value="#ffffff">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="control-group">
           <h3>Text Overlay</h3>
           <div class="text-layers" id="textLayers"></div>
           <button class="add-text-btn" id="addTextBtn">+ Add Text</button>

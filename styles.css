@@ -469,6 +469,31 @@ main {
   padding-top: 0.75rem;
 }
 
+/* Circle Crop */
+.toggle-control {
+  margin-bottom: 1rem;
+}
+
+.toggle-control label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.toggle-control input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.circle-options {
+  border-top: 1px solid var(--bg-tertiary);
+  padding-top: 0.75rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   main {
